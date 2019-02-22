@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-# coding: utf-8
+# coding: utf-8 
 # # Import
 
-# In[39]:
+# In[1]:
 
 
 from __future__ import print_function
@@ -21,7 +21,40 @@ import pypdt
 import numpy as np
 
 
-# ### Numpy Manipulations
+# # Fits
+
+# In[ ]:
+
+
+def fit_histogram_data(_func,bins,n,p0=None,bounds=(-np.inf,np.inf)):
+    # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html
+    # A 1-d sigma should contain values of standard deviations of errors in ydata. In this case, the optimized function is chisq = sum((r / sigma) ** 2).    
+    sigma=np.sqrt(n)
+    popt, pcov = curve_fit(_func, midpoints(bins), n,sigma=sigma,p0=p0)
+    return popt, pcov
+
+
+# In[ ]:
+
+
+def fit_pandas_data(_func,_data,p0=None,bounds=(-np.inf,np.inf)):
+    _x=_data['x']
+    _y=_data['y']
+    _weights=_data['weights']
+
+    popt, pcov = curve_fit(_func, _x, _y,sigma=_weights,p0=p0,bounds=bounds)
+   
+    #_const=ufloat(popt[0],np.sqrt(pcov[0,0]))
+    #_linear=ufloat(popt[1],np.sqrt(pcov[1,1]))
+    #print('{:+.1uS}'.format(_const) , '( {:+.1uS}'.format(60*_linear)," )"+"* t/h" )
+    #
+    #lin=ufloat(popt[1],np.sqrt(pcov[1,1]))
+    #const=ufloat(popt[0],np.sqrt(pcov[0,0]))
+    #
+    return popt, pcov
+
+
+# # Numpy Manipulations
 
 # In[ ]:
 
@@ -30,7 +63,7 @@ def np_sort_by_function_of_row(_mat,f,row='row'): # _mat needs to be np.transpos
     _final_touch=np.transpose
     if row=='column':
         _mat=np.transpose(_mat)
-
+        
     _t=np.array([ np.append(cut_results, f(cut_results)) for cut_results in _mat  ])
     res=np.sort(np.transpose(_t))
     if row=='column':
@@ -45,19 +78,26 @@ def snake_flatten_matrix(m):
     return np.array([m[i][::-1] if i%2!=0 else m[i] for i in range(len(m))]).flatten()
 
 
+# In[ ]:
+
+
+def midpoints(bins):
+    return (bins[:-1]+bins[1:])/2
+
+
 # # Logical
 
 # In[ ]:
 
 
 def boolstring2binary(c):
-     return int(''.join([ str(int(gt(r,0))) for r in c ]) , 2)
+     return int(''.join([ str(int(gt(r,0))) for r in c ]) , 2) 
 
 
 # In[17]:
 
 
-def test(d):
+def test(d):  
     return d['relation'](d['values'],d['threshold'])
 
 
@@ -80,7 +120,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[40]:
+# In[2]:
 
 
 def read_file_to_lines(file_name):
@@ -91,7 +131,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[41]:
+# In[3]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -99,10 +139,10 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
     for item in mylines:
           thefile.write("%s" % item)
     if final_line:
-        thefile.write("\n")
+        thefile.write("\n")      
 
 
-# In[42]:
+# In[4]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -111,7 +151,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[43]:
+# In[5]:
 
 
 def filejson2dictionary(fn):
@@ -120,7 +160,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[44]:
+# In[6]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -144,7 +184,7 @@ def change_tag_in_file(filename=None,tag=None,text=None):
 
 # # Strings analysis
 
-# In[45]:
+# In[7]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -251,21 +291,21 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[46]:
+# In[8]:
 
 
 def sort_by_ith(data,i):
     return sorted(data, key=lambda tup: tup[i])
 
 
-# In[47]:
+# In[9]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[48]:
+# In[10]:
 
 
 def arange(a,b,s):
@@ -274,21 +314,21 @@ def arange(a,b,s):
 
 # # Strings
 
-# In[49]:
+# In[11]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[50]:
+# In[12]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[51]:
+# In[13]:
 
 
 def dashed_to_year(stri):
@@ -326,7 +366,7 @@ def dashed_to_year(stri):
 
 # # Dictionaries
 
-# In[52]:
+# In[14]:
 
 
 def dict2string(dictio):
@@ -338,7 +378,7 @@ def dict2string(dictio):
 
 # # Number manipulations
 
-# In[53]:
+# In[15]:
 
 
 def num(s):
@@ -353,7 +393,7 @@ def chop(n,eps):
 		return n
 
 
-# In[54]:
+# In[16]:
 
 
 def to_precision(x,p):
@@ -415,3 +455,4 @@ def to_precision(x,p):
         out.append(m)
 
     return "".join(out)
+
