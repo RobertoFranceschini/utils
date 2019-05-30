@@ -1,8 +1,8 @@
-#!/usr/bin/env python3.7
+#!/usr/bin/env python3
 # coding: utf-8 
 # # Import
 
-# In[162]:
+# In[ ]:
 
 
 from __future__ import print_function
@@ -253,11 +253,11 @@ def columns2strings(raw_data):
 # In[ ]:
 
 
-def fit_histogram_data(_func,bins,n,p0=None,bounds=(-np.inf,np.inf)):
+def fit_histogram_data(_func,bins,n,p0=None,bounds=(-np.inf,np.inf),**kw):
     # https://docs.scipy.org/doc/scipy/reference/generated/scipy.optimize.curve_fit.html
     # A 1-d sigma should contain values of standard deviations of errors in ydata. In this case, the optimized function is chisq = sum((r / sigma) ** 2).    
     sigma=np.sqrt(n)
-    popt, pcov = curve_fit(_func, midpoints(bins), n,sigma=sigma,p0=p0)
+    popt, pcov = curve_fit(_func, midpoints(bins), n,sigma=sigma,p0=p0,absolute_sigma=True, **kw)
     return popt, pcov
 
 
@@ -417,7 +417,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[163]:
+# In[ ]:
 
 
 def read_file_to_lines(file_name):
@@ -428,7 +428,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[164]:
+# In[ ]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -439,7 +439,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[165]:
+# In[ ]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -448,7 +448,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[166]:
+# In[ ]:
 
 
 def filejson2dictionary(fn):
@@ -457,7 +457,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[167]:
+# In[ ]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -524,7 +524,7 @@ def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[168]:
+# In[ ]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -631,21 +631,21 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[169]:
+# In[ ]:
 
 
 def sort_by_ith(data,i):
     return sorted(data, key=lambda tup: tup[i])
 
 
-# In[170]:
+# In[ ]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[171]:
+# In[ ]:
 
 
 def arange(a,b,s):
@@ -654,21 +654,21 @@ def arange(a,b,s):
 
 # # Strings
 
-# In[172]:
+# In[ ]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[173]:
+# In[ ]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[174]:
+# In[ ]:
 
 
 def dashed_to_year(stri):
@@ -706,7 +706,7 @@ def dashed_to_year(stri):
 
 # # Dictionaries
 
-# In[175]:
+# In[ ]:
 
 
 def dict2string(dictio):
@@ -725,7 +725,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[176]:
+# In[ ]:
 
 
 def num(s):
@@ -763,7 +763,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[177]:
+# In[ ]:
 
 
 def to_precision(x,p):
