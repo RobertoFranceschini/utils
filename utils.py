@@ -2,7 +2,7 @@
 # coding: utf-8 
 # # Import
 
-# In[ ]:
+# In[10]:
 
 
 from __future__ import print_function
@@ -119,7 +119,7 @@ def Plot(f,var,minvar,maxvar,PlotPoints=30,PlotLabel=[None,None],PlotTitle=None,
 
 
 def heatmap(data, row_labels, col_labels, ax=None,
-            cbar_kw={}, cbarlabel="", **kwargs):
+            cbar_kw={},grid_kw={}, cbarlabel="", **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -170,7 +170,12 @@ def heatmap(data, row_labels, col_labels, ax=None,
 
     ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
     ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
-    ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+    
+    gridkw = {'draw_grid':False}
+    gridkw.update(grid_kw)
+    
+    if gridkw['draw_grid']:
+        ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
     ax.tick_params(which="minor", bottom=False, left=False)
 
     return im, cbar
@@ -232,6 +237,21 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
             #    texts.append('')
 
     return texts
+
+
+# In[68]:
+
+
+harvest=np.array([[4,1],[2,3]])
+vegetables=['Carrots','Potatoes']
+farmers=['Joe','Sam']
+
+
+# In[70]:
+
+
+im, cbar = heatmap(harvest, vegetables, farmers, ax=None, cmap="YlGn", cbarlabel='$\chi$-Label',grid_kw={'draw_grid':False})
+texts = annotate_heatmap(im, valfmt="{x:.2f}",range_display=[2,3],verticalalignment='baseline')
 
 
 # # Pandas
