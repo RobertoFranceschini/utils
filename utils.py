@@ -2,7 +2,7 @@
 # coding: utf-8 
 # # Import
 
-# In[10]:
+# In[112]:
 
 
 from __future__ import print_function
@@ -115,70 +115,8 @@ def Plot(f,var,minvar,maxvar,PlotPoints=30,PlotLabel=[None,None],PlotTitle=None,
         return fig 
 
 
-# In[67]:
+# In[ ]:
 
-
-def heatmap(data, row_labels, col_labels, ax=None,
-            cbar_kw={},grid_kw={}, cbarlabel="", **kwargs):
-    """
-    Create a heatmap from a numpy array and two lists of labels.
-
-    Arguments:
-        data       : A 2D numpy array of shape (N,M)
-        row_labels : A list or array of length N with the labels
-                     for the rows
-        col_labels : A list or array of length M with the labels
-                     for the columns
-    Optional arguments:
-        ax         : A matplotlib.axes.Axes instance to which the heatmap
-                     is plotted. If not provided, use current axes or
-                     create a new one.
-        cbar_kw    : A dictionary with arguments to
-                     :meth:`matplotlib.Figure.colorbar`.
-        cbarlabel  : The label for the colorbar
-    All other arguments are directly passed on to the imshow call.
-    """
-
-    if not ax:
-        ax = plt.gca()
-
-    # Plot the heatmap
-    im = ax.imshow(data, **kwargs)
-
-    # Create colorbar
-    cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
-    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
-
-    # We want to show all ticks...
-    ax.set_xticks(np.arange(data.shape[1]))
-    ax.set_yticks(np.arange(data.shape[0]))
-    # ... and label them with the respective list entries.
-    ax.set_xticklabels(col_labels)
-    ax.set_yticklabels(row_labels)
-
-    # Let the horizontal axes labeling appear on top.
-    ax.tick_params(top=True, bottom=False,
-                   labeltop=True, labelbottom=False)
-
-    # Rotate the tick labels and set their alignment.
-    plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
-             rotation_mode="anchor")
-
-    # Turn spines off and create white grid.
-    for edge, spine in ax.spines.items():
-        spine.set_visible(False)
-
-    ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
-    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
-    
-    gridkw = {'draw_grid':False}
-    gridkw.update(grid_kw)
-    
-    if gridkw['draw_grid']:
-        ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
-    ax.tick_params(which="minor", bottom=False, left=False)
-
-    return im, cbar
 
 
 def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
@@ -239,7 +177,74 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
     return texts
 
 
-# In[68]:
+# In[130]:
+
+
+def heatmap(data, row_labels, col_labels, ax=None,
+            cbar_kw={},grid_kw={}, cbarlabel="", **kwargs):
+    """
+    Create a heatmap from a numpy array and two lists of labels.
+
+    Arguments:
+        data       : A 2D numpy array of shape (N,M)
+        row_labels : A list or array of length N with the labels
+                     for the rows
+        col_labels : A list or array of length M with the labels
+                     for the columns
+    Optional arguments:
+        ax         : A matplotlib.axes.Axes instance to which the heatmap
+                     is plotted. If not provided, use current axes or
+                     create a new one.
+        cbar_kw    : A dictionary with arguments to
+                     :meth:`matplotlib.Figure.colorbar`.
+        cbarlabel  : The label for the colorbar
+    All other arguments are directly passed on to the imshow call.
+    """
+
+    if not ax:
+        ax = plt.gca()
+
+    # Plot the heatmap
+    im = ax.imshow(data, **kwargs)
+
+    # Create colorbar
+    cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
+    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+
+    # We want to show all ticks...
+    ax.set_xticks(np.arange(data.shape[1]))
+    ax.set_yticks(np.arange(data.shape[0]))
+    # ... and label them with the respective list entries.
+    ax.set_xticklabels(col_labels)
+    ax.set_yticklabels(row_labels)
+
+    # Let the horizontal axes labeling appear on top.
+    ax.tick_params(top=True, bottom=False,
+                   labeltop=True, labelbottom=False)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=-30, ha="right",
+             rotation_mode="anchor")
+
+    # Turn spines off and create white grid.
+    for edge, spine in ax.spines.items():
+        spine.set_visible(False)
+        
+        
+    ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
+    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
+    
+    gridkw = {'draw_grid':False}
+    gridkw.update(grid_kw)
+    
+    if gridkw['draw_grid']:
+        ax.grid(which="minor", color="w", linestyle='-', linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=True)
+
+    return im, cbar
+
+
+# In[131]:
 
 
 harvest=np.array([[4,1],[2,3]])
@@ -247,7 +252,7 @@ vegetables=['Carrots','Potatoes']
 farmers=['Joe','Sam']
 
 
-# In[70]:
+# In[132]:
 
 
 im, cbar = heatmap(harvest, vegetables, farmers, ax=None, cmap="YlGn", cbarlabel='$\chi$-Label',grid_kw={'draw_grid':False})
@@ -437,7 +442,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[ ]:
+# In[113]:
 
 
 def read_file_to_lines(file_name):
@@ -448,7 +453,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[ ]:
+# In[114]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -459,7 +464,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[ ]:
+# In[115]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -468,7 +473,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[ ]:
+# In[116]:
 
 
 def filejson2dictionary(fn):
@@ -477,7 +482,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[ ]:
+# In[117]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -544,7 +549,7 @@ def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[ ]:
+# In[118]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -651,44 +656,52 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[ ]:
+# In[119]:
 
 
 def sort_by_ith(data,i):
     return sorted(data, key=lambda tup: tup[i])
 
 
-# In[ ]:
+# In[120]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[ ]:
+# In[133]:
 
 
 def arange(a,b,s):
     return np.arange(a,b+s,s)
+def linspace(start,stop,step):
+    return np.linspace(start, stop, num=(stop-start)/step, endpoint=True)
+
+
+# In[134]:
+
+
+linspace(0,2,0.2)
 
 
 # # Strings
 
-# In[ ]:
+# In[122]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[ ]:
+# In[123]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[ ]:
+# In[124]:
 
 
 def dashed_to_year(stri):
@@ -726,7 +739,7 @@ def dashed_to_year(stri):
 
 # # Dictionaries
 
-# In[ ]:
+# In[125]:
 
 
 def dict2string(dictio):
@@ -745,7 +758,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[ ]:
+# In[126]:
 
 
 def num(s):
@@ -783,7 +796,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[ ]:
+# In[127]:
 
 
 def to_precision(x,p):
