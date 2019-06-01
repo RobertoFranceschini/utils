@@ -2,7 +2,7 @@
 # coding: utf-8 
 # # Import
 
-# In[210]:
+# In[246]:
 
 
 from __future__ import print_function
@@ -180,15 +180,15 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 # In[189]:
 
 
-def histo2D(data, row_labels, col_labels, ax=None, cbarlabel="",offsetx=0,offsety=-0.5, reverse=True,transpose=True, **kwargs):
-    return heatmap(data, row_labels, col_labels, ax=ax, cbarlabel=cbarlabel,offsetx=offsetx,offsety=offsety, reverse=reverse,transpose=transpose, **kwargs) 
+def histo2D(data, row_labels, col_labels, ax=None, cbarlabel="",offsetx=0.5,offsety=-0.5, reverse=True,transpose=True,minor=False, **kwargs):
+    return heatmap(data, row_labels, col_labels, ax=ax, cbarlabel=cbarlabel,offsetx=offsetx,offsety=offsety, reverse=reverse,transpose=transpose, minor=minor, **kwargs) 
 
 
-# In[130]:
+# In[268]:
 
 
 def heatmap(data, row_labels, col_labels, ax=None,
-            cbar_kw={},grid_kw={}, cbarlabel="",offsetx=0,offsety=0, reverse=False,transpose=False, **kwargs):
+            cbar_kw={},grid_kw={}, cbarlabel="",offsetx=0,offsety=0, reverse=False,transpose=False,minor=True, **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -244,8 +244,8 @@ def heatmap(data, row_labels, col_labels, ax=None,
         spine.set_visible(False)
         
         
-    ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
-    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=False)
+    ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=minor)
+    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=minor)
     
     gridkw = {'draw_grid':False}
     gridkw.update(grid_kw)
@@ -257,7 +257,7 @@ def heatmap(data, row_labels, col_labels, ax=None,
     return im, cbar
 
 
-# In[131]:
+# In[269]:
 
 
 harvest=np.array([[4,1],[2,3]])
@@ -265,7 +265,7 @@ vegetables=['Carrots','Potatoes']
 farmers=['Joe','Sam']
 
 
-# In[132]:
+# In[270]:
 
 
 im, cbar = heatmap(harvest, vegetables, farmers, ax=None, cmap="YlGn", cbarlabel='$\chi$-Label',grid_kw={'draw_grid':False})
@@ -455,7 +455,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[211]:
+# In[247]:
 
 
 def read_file_to_lines(file_name):
@@ -466,7 +466,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[212]:
+# In[248]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -477,7 +477,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[213]:
+# In[249]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -486,7 +486,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[214]:
+# In[250]:
 
 
 def filejson2dictionary(fn):
@@ -495,7 +495,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[215]:
+# In[251]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -562,7 +562,7 @@ def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[216]:
+# In[252]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -669,21 +669,21 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[217]:
+# In[253]:
 
 
 def sort_by_ith(data,i):
     return sorted(data, key=lambda tup: tup[i])
 
 
-# In[218]:
+# In[254]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[219]:
+# In[255]:
 
 
 def arange(a,b,s):
@@ -700,21 +700,21 @@ linspace(0,2,0.2)
 
 # # Strings
 
-# In[220]:
+# In[256]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[221]:
+# In[257]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[222]:
+# In[258]:
 
 
 def dashed_to_year(stri):
@@ -752,7 +752,7 @@ def dashed_to_year(stri):
 
 # # Dictionaries
 
-# In[223]:
+# In[259]:
 
 
 def dict2string(dictio):
@@ -771,7 +771,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[224]:
+# In[260]:
 
 
 def num(s):
@@ -809,7 +809,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[225]:
+# In[261]:
 
 
 def to_precision(x,p):
