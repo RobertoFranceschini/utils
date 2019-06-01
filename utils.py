@@ -2,7 +2,7 @@
 # coding: utf-8 
 # # Import
 
-# In[112]:
+# In[137]:
 
 
 from __future__ import print_function
@@ -181,7 +181,7 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 
 
 def heatmap(data, row_labels, col_labels, ax=None,
-            cbar_kw={},grid_kw={}, cbarlabel="", **kwargs):
+            cbar_kw={},grid_kw={}, cbarlabel="",offsetx=0,offsety=0, **kwargs):
     """
     Create a heatmap from a numpy array and two lists of labels.
 
@@ -212,8 +212,8 @@ def heatmap(data, row_labels, col_labels, ax=None,
     cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
 
     # We want to show all ticks...
-    ax.set_xticks(np.arange(data.shape[1]))
-    ax.set_yticks(np.arange(data.shape[0]))
+    ax.set_xticks(np.arange(data.shape[1])-offsetx)
+    ax.set_yticks(np.arange(data.shape[0])-offsety)
     # ... and label them with the respective list entries.
     ax.set_xticklabels(col_labels)
     ax.set_yticklabels(row_labels)
@@ -232,7 +232,7 @@ def heatmap(data, row_labels, col_labels, ax=None,
         
         
     ax.set_xticks(np.arange(data.shape[1]+1)-.5, minor=True)
-    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=True)
+    ax.set_yticks(np.arange(data.shape[0]+1)-.5, minor=False)
     
     gridkw = {'draw_grid':False}
     gridkw.update(grid_kw)
@@ -442,7 +442,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[113]:
+# In[138]:
 
 
 def read_file_to_lines(file_name):
@@ -453,7 +453,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[114]:
+# In[139]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -464,7 +464,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[115]:
+# In[140]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -473,7 +473,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[116]:
+# In[141]:
 
 
 def filejson2dictionary(fn):
@@ -482,7 +482,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[117]:
+# In[142]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -549,7 +549,7 @@ def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[118]:
+# In[143]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -656,21 +656,21 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[119]:
+# In[144]:
 
 
 def sort_by_ith(data,i):
     return sorted(data, key=lambda tup: tup[i])
 
 
-# In[120]:
+# In[145]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[133]:
+# In[146]:
 
 
 def arange(a,b,s):
@@ -687,21 +687,21 @@ linspace(0,2,0.2)
 
 # # Strings
 
-# In[122]:
+# In[147]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[123]:
+# In[148]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[124]:
+# In[149]:
 
 
 def dashed_to_year(stri):
@@ -739,7 +739,7 @@ def dashed_to_year(stri):
 
 # # Dictionaries
 
-# In[125]:
+# In[150]:
 
 
 def dict2string(dictio):
@@ -758,7 +758,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[126]:
+# In[151]:
 
 
 def num(s):
@@ -796,7 +796,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[127]:
+# In[152]:
 
 
 def to_precision(x,p):
