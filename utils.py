@@ -2,7 +2,7 @@
 # coding: utf-8 
 # # Import
 
-# In[246]:
+# In[387]:
 
 
 from __future__ import print_function
@@ -131,7 +131,7 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
         data       : Data used to annotate. If None, the image's data is used.
         valfmt     : The format of the annotations inside the heatmap.
                      This should either use the string format method, e.g.
-                     "$ {x:.2f}", or be a :class:`matplotlib.ticker.Formatter`.
+                     "{x:.2f}", or be a :class:`matplotlib.ticker.Formatter`.
         textcolors : A list or array of two color specifications. The first is
                      used for values below a threshold, the second for those
                      above.
@@ -180,8 +180,17 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 # In[189]:
 
 
-def histo2D(data, row_labels, col_labels, ax=None, cbarlabel="",offsetx=0.5,offsety=-0.5, reverse=True,transpose=True,minor=False, **kwargs):
-    return heatmap(data, row_labels, col_labels, ax=ax, cbarlabel=cbarlabel,offsetx=offsetx,offsety=offsety, reverse=reverse,transpose=transpose, minor=minor, **kwargs) 
+def histo2D(data, row_labels=None, col_labels=None, ax=None, labels_format=['{:.2g}','{:.2g}'] ,cbarlabel="",offsetx=0.5,offsety=-0.5, reverse=True,transpose=True,minor=False, **kwargs):
+    
+    if type(labels_format) is str:
+        labels_format=[labels_format,labels_format]
+
+    if row_labels is None:
+        row_labels=[labels_format[0].format(r) for r in data.bins[0]]
+    if col_labels is None:
+        col_labels=[labels_format[1].format(c) for c in data.bins[1]]
+    
+    return heatmap(data.counts, row_labels , col_labels , ax=ax, cbarlabel=cbarlabel,offsetx=offsetx,offsety=offsety, reverse=reverse,transpose=transpose, minor=minor, **kwargs) 
 
 
 # In[268]:
@@ -389,6 +398,26 @@ def snake_flatten_matrix(m):
 # In[ ]:
 
 
+def snake_bins(hist2d,op=lambda x,y: str(x)+' '+str(y)):  
+    A=hist2d.bins[0][:-1]
+    B=hist2d.bins[1][:-1]
+    r = np.empty((len(A),len(B)),dtype=object)
+    counter = 0
+    bins=[]
+    labels=[]
+    for i,a in enumerate(A):
+        for j,b in enumerate(B):
+            label=op(a,b)
+            r[i,j] = np.array([counter, op(a,b) ],dtype=object) # op = ufunc in question
+            bins=bins+[counter]
+            labels=labels+[label]
+            counter+=1
+    return np.array(bins),labels#r, bins, labels
+
+
+# In[ ]:
+
+
 def midpoints(bins):
     return (bins[:-1]+bins[1:])/2
 
@@ -455,7 +484,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[247]:
+# In[388]:
 
 
 def read_file_to_lines(file_name):
@@ -466,7 +495,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[248]:
+# In[389]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -477,7 +506,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[249]:
+# In[390]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -486,7 +515,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[250]:
+# In[391]:
 
 
 def filejson2dictionary(fn):
@@ -495,7 +524,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[251]:
+# In[392]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -562,7 +591,7 @@ def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[252]:
+# In[393]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -669,21 +698,21 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[253]:
+# In[394]:
 
 
 def sort_by_ith(data,i):
     return sorted(data, key=lambda tup: tup[i])
 
 
-# In[254]:
+# In[395]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[255]:
+# In[396]:
 
 
 def arange(a,b,s):
@@ -700,21 +729,21 @@ linspace(0,2,0.2)
 
 # # Strings
 
-# In[256]:
+# In[397]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[257]:
+# In[398]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[258]:
+# In[399]:
 
 
 def dashed_to_year(stri):
@@ -752,7 +781,7 @@ def dashed_to_year(stri):
 
 # # Dictionaries
 
-# In[259]:
+# In[400]:
 
 
 def dict2string(dictio):
@@ -771,7 +800,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[260]:
+# In[401]:
 
 
 def num(s):
@@ -809,7 +838,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[261]:
+# In[402]:
 
 
 def to_precision(x,p):
