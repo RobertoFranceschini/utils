@@ -2,7 +2,7 @@
 # coding: utf-8 
 # # Import
 
-# In[387]:
+# In[496]:
 
 
 from __future__ import print_function
@@ -28,6 +28,7 @@ import scipy.interpolate
 import matplotlib.pyplot as plt
 import unicodedata
 import matplotlib
+import ray
 
 
 # In[ ]:
@@ -37,6 +38,36 @@ def unload_symbols():
     for letter in dir(sympy.abc):
         if not letter.startswith('_'):
             del globals()[letter]
+
+
+# In[ ]:
+
+
+from IPython.display import display as _display
+from IPython.display import Math as _Math
+from IPython.display import Latex as _Latex
+def typeset(string):
+    _display(_Math(string))
+
+
+# # Ray
+
+# In[ ]:
+
+
+def check_RayObjectsIdDict(analysisResult, DEBUG=False):
+    remaining_ids=0
+    for k in analysisResult:
+        if type(analysisResult[k]) is ray._raylet.ObjectID: # the item in the list is not yet ready or not yet retrived
+            if DEBUG: print(k,' is still ObjectId',analysisResult[k])
+            # check if this ID is ready
+            ready_ids, _remaining_ids = ray.wait([analysisResult[k]],timeout=0)
+            remaining_ids+=len(_remaining_ids)
+            if len(ready_ids)>0:
+                if DEBUG: print(k ,' is ready at ID', ready_ids)
+                analysisResult[k] = ray.get(analysisResult[k])
+                
+    print(remaining_ids, ' ID still remaining')
 
 
 # # MatplotLib
@@ -215,6 +246,16 @@ def heatmap(data, row_labels, col_labels, ax=None,
                      :meth:`matplotlib.Figure.colorbar`.
         cbarlabel  : The label for the colorbar
     All other arguments are directly passed on to the imshow call.
+    
+ 
+    harvest=np.array([[4,1],[2,3]])
+    vegetables=['Carrots','Potatoes']
+    farmers=['Joe','Sam']
+    im, cbar = heatmap(harvest, vegetables, farmers, ax=None, cmap="YlGn", cbarlabel='$\chi$-Label',grid_kw={'draw_grid':False})
+    texts = annotate_heatmap(im, valfmt="{x:.2f}",range_display=[2,3],verticalalignment='baseline')
+    
+    
+    
     """
     
    
@@ -264,21 +305,6 @@ def heatmap(data, row_labels, col_labels, ax=None,
     ax.tick_params(which="minor", bottom=False, left=True)
 
     return im, cbar
-
-
-# In[269]:
-
-
-harvest=np.array([[4,1],[2,3]])
-vegetables=['Carrots','Potatoes']
-farmers=['Joe','Sam']
-
-
-# In[270]:
-
-
-im, cbar = heatmap(harvest, vegetables, farmers, ax=None, cmap="YlGn", cbarlabel='$\chi$-Label',grid_kw={'draw_grid':False})
-texts = annotate_heatmap(im, valfmt="{x:.2f}",range_display=[2,3],verticalalignment='baseline')
 
 
 # # Pandas
@@ -398,7 +424,7 @@ def snake_flatten_matrix(m):
 # In[ ]:
 
 
-def snake_bins(hist2d,op=lambda x,y: str(x)+' '+str(y)):  
+def snake_bins(hist2d,op=lambda x,y: '('+'{:.2g}'.format(x)+','+"{:.2g}".format(y)+')'):  
     A=hist2d.bins[0][:-1]
     B=hist2d.bins[1][:-1]
     r = np.empty((len(A),len(B)),dtype=object)
@@ -484,7 +510,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[388]:
+# In[480]:
 
 
 def read_file_to_lines(file_name):
@@ -495,7 +521,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[389]:
+# In[481]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -506,7 +532,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[390]:
+# In[482]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -515,7 +541,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[391]:
+# In[483]:
 
 
 def filejson2dictionary(fn):
@@ -524,7 +550,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[392]:
+# In[484]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -591,7 +617,7 @@ def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[393]:
+# In[485]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -698,21 +724,21 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[394]:
+# In[486]:
 
 
 def sort_by_ith(data,i):
     return sorted(data, key=lambda tup: tup[i])
 
 
-# In[395]:
+# In[487]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[396]:
+# In[488]:
 
 
 def arange(a,b,s):
@@ -729,21 +755,21 @@ linspace(0,2,0.2)
 
 # # Strings
 
-# In[397]:
+# In[489]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[398]:
+# In[490]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[399]:
+# In[491]:
 
 
 def dashed_to_year(stri):
@@ -781,7 +807,7 @@ def dashed_to_year(stri):
 
 # # Dictionaries
 
-# In[400]:
+# In[492]:
 
 
 def dict2string(dictio):
@@ -800,7 +826,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[401]:
+# In[493]:
 
 
 def num(s):
@@ -838,7 +864,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[402]:
+# In[494]:
 
 
 def to_precision(x,p):
