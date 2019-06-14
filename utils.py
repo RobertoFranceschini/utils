@@ -2,7 +2,7 @@
 # coding: utf-8 
 # # Import
 
-# In[496]:
+# In[540]:
 
 
 from __future__ import print_function
@@ -28,7 +28,7 @@ import scipy.interpolate
 import matplotlib.pyplot as plt
 import unicodedata
 import matplotlib
-import ray
+import ray, time
 
 
 # In[ ]:
@@ -68,6 +68,38 @@ def check_RayObjectsIdDict(analysisResult, DEBUG=False):
                 analysisResult[k] = ray.get(analysisResult[k])
                 
     print(remaining_ids, ' ID still remaining')
+    return remaining_ids
+
+
+# In[ ]:
+
+
+def check_RayObjectsIdList(LHEsubevents, DEBUG=False):
+    remaining_ids=0
+    for th,k in enumerate(LHEsubevents):
+        if type(k) is ray._raylet.ObjectID: # the item in the list is not yet ready or not yet retrived
+            if DEBUG: print(k,' is still ObjectId')
+            # check if this ID is ready
+            ready_ids, _remaining_ids = ray.wait([k],timeout=0)
+            remaining_ids+=len(_remaining_ids)
+            if len(ready_ids)>0:
+                if DEBUG: print(k ,' is ready')
+                LHEsubevents[th] = ray.get(k)
+                
+    if DEBUG: print(remaining_ids, ' ID still remaining')
+    return remaining_ids
+
+
+# In[517]:
+
+
+def wait_for_ray_iterable(analysisResult,method=check_RayObjectsIdDict,DEBUG=False):
+    start = time.time()
+    while method(analysisResult, DEBUG=False) > 0:
+        method(analysisResult, DEBUG=False)
+        time.sleep(5)
+    end = time.time()
+    if DEBUG: print(end - start, 'seconds')
 
 
 # # MatplotLib
@@ -510,7 +542,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[480]:
+# In[541]:
 
 
 def read_file_to_lines(file_name):
@@ -521,7 +553,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[481]:
+# In[542]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -532,7 +564,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[482]:
+# In[543]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -541,7 +573,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[483]:
+# In[544]:
 
 
 def filejson2dictionary(fn):
@@ -550,7 +582,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[484]:
+# In[545]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -617,7 +649,7 @@ def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[485]:
+# In[546]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -724,21 +756,21 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[486]:
+# In[547]:
 
 
 def sort_by_ith(data,i):
     return sorted(data, key=lambda tup: tup[i])
 
 
-# In[487]:
+# In[548]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[488]:
+# In[549]:
 
 
 def arange(a,b,s):
@@ -755,21 +787,21 @@ linspace(0,2,0.2)
 
 # # Strings
 
-# In[489]:
+# In[550]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[490]:
+# In[551]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[491]:
+# In[552]:
 
 
 def dashed_to_year(stri):
@@ -807,7 +839,7 @@ def dashed_to_year(stri):
 
 # # Dictionaries
 
-# In[492]:
+# In[553]:
 
 
 def dict2string(dictio):
@@ -826,7 +858,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[493]:
+# In[554]:
 
 
 def num(s):
@@ -864,7 +896,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[494]:
+# In[555]:
 
 
 def to_precision(x,p):
