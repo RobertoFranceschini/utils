@@ -2,7 +2,7 @@
 # coding: utf-8 
 # # Import
 
-# In[540]:
+# In[ ]:
 
 
 from __future__ import print_function
@@ -12,6 +12,7 @@ import sys
 import os
 import json
 import subprocess
+import inspect
 from subprocess import check_call
 from difflib import SequenceMatcher
 import scipy.sparse
@@ -67,7 +68,7 @@ def check_RayObjectsIdDict(analysisResult, DEBUG=False):
                 if DEBUG: print(k ,' is ready at ID', ready_ids)
                 analysisResult[k] = ray.get(analysisResult[k])
                 
-    print(remaining_ids, ' ID still remaining')
+    if DEBUG: print(remaining_ids, ' ID still remaining')
     return remaining_ids
 
 
@@ -90,16 +91,16 @@ def check_RayObjectsIdList(LHEsubevents, DEBUG=False):
     return remaining_ids
 
 
-# In[517]:
+# In[ ]:
 
 
 def wait_for_ray_iterable(analysisResult,method=check_RayObjectsIdDict,DEBUG=False):
     start = time.time()
     while method(analysisResult, DEBUG=False) > 0:
-        method(analysisResult, DEBUG=False)
+        method(analysisResult, DEBUG=DEBUG)
         time.sleep(5)
     end = time.time()
-    if DEBUG: print(end - start, 'seconds')
+    print(end - start, 'seconds')
 
 
 # # MatplotLib
@@ -244,6 +245,9 @@ def annotate_heatmap(im, data=None, valfmt="{x:.2f}",
 
 
 def histo2D(data, row_labels=None, col_labels=None, ax=None, labels_format=['{:.2g}','{:.2g}'] ,cbarlabel="",offsetx=0.5,offsety=-0.5, reverse=True,transpose=True,minor=False, **kwargs):
+    '''
+    `data` is a NPCHistogram with `bins` and `counts` data member. 
+    '''
     
     if type(labels_format) is str:
         labels_format=[labels_format,labels_format]
@@ -254,6 +258,42 @@ def histo2D(data, row_labels=None, col_labels=None, ax=None, labels_format=['{:.
         col_labels=[labels_format[1].format(c) for c in data.bins[1]]
     
     return heatmap(data.counts, row_labels , col_labels , ax=ax, cbarlabel=cbarlabel,offsetx=offsetx,offsety=offsety, reverse=reverse,transpose=transpose, minor=minor, **kwargs) 
+
+
+# In[ ]:
+
+
+def PandasXYZ2Dhisto(dataframe=None,var1=None,var2=None,f=None,interpolation='quadric'):
+    '''
+    unlike histo2D this is takes a DataFrame where the `x` `y` `z=f(x,y)`  are stored 
+    this requires a full grid, otherwise the only possible plot is 
+    `plt.tripcolor(dataframe['var1'],dataframe['var2'],dataframe['sensitvity'])`
+    '''
+    if (None not in [var1,var2,f]) and (type(dataframe) is  pd.DataFrame):
+
+        _x=np.unique(np.array(dataframe[var1]))
+        _y=np.unique(np.array(dataframe[var2]))
+
+        _z = np.array( [  [ np.array(dataframe.query(var1+'=='+str(f1)+' & '+var2+'=='+str(f2))[f])[0]  for f2 in _y  ] for f1 in _x])
+
+        _dummy=npc.NumpyHistogramData( counts=_z, bins=(_x,_y)   ) 
+
+        methods = [None, 'none', 'nearest', 'bilinear', 'bicubic', 'spline16',
+                   'spline36', 'hanning', 'hamming', 'hermite', 'kaiser', 'quadric',
+                   'catrom', 'gaussian', 'bessel', 'mitchell', 'sinc', 'lanczos']
+
+
+        fig, axs = plt.subplots(nrows=3, ncols=6, figsize=(18, 12),
+                                subplot_kw={'xticks': [], 'yticks': []})
+
+        for ax, interp_method in zip(axs.flat, methods):
+            ax.imshow(_z, interpolation=interp_method, cmap='viridis')
+            ax.set_title(str(interp_method))
+
+        plt.tight_layout()
+        plt.show()
+        plt.clf()
+        plt.imshow(_dummy.counts, interpolation=interpolation)
 
 
 # In[268]:
@@ -542,7 +582,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[541]:
+# In[ ]:
 
 
 def read_file_to_lines(file_name):
@@ -553,7 +593,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[542]:
+# In[ ]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -564,7 +604,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[543]:
+# In[ ]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -573,7 +613,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[544]:
+# In[ ]:
 
 
 def filejson2dictionary(fn):
@@ -582,7 +622,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[545]:
+# In[ ]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -649,7 +689,7 @@ def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[546]:
+# In[ ]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -756,21 +796,21 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[547]:
+# In[ ]:
 
 
 def sort_by_ith(data,i):
     return sorted(data, key=lambda tup: tup[i])
 
 
-# In[548]:
+# In[ ]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[549]:
+# In[ ]:
 
 
 def arange(a,b,s):
@@ -787,21 +827,21 @@ linspace(0,2,0.2)
 
 # # Strings
 
-# In[550]:
+# In[ ]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[551]:
+# In[ ]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[552]:
+# In[ ]:
 
 
 def dashed_to_year(stri):
@@ -839,7 +879,7 @@ def dashed_to_year(stri):
 
 # # Dictionaries
 
-# In[553]:
+# In[ ]:
 
 
 def dict2string(dictio):
@@ -847,6 +887,58 @@ def dict2string(dictio):
     for key,value in dictio.items():
         res.extend([str(value)])
     return "_".join(res)
+
+
+# In[3]:
+
+
+def retain_options_of_function(myfunct,optArgs,bonus=None):
+    
+    acceptable=[p.name for p in inspect.signature(myfunct).parameters.values()]
+    if bonus is not None:
+        acceptable=acceptable+bonus
+    filtered_mydict = {k: v for k, v in optArgs.items() if k in acceptable}
+    return filtered_mydict
+
+
+# In[5]:
+
+
+def multiply_dictionaries(params_list_of_dicts,DEBUG=False):
+    first_result=[]
+    for k,v in params_list_of_dicts[0].items():
+            for _v in v:
+                if DEBUG: print('adding ',k,':',_v)
+                res={}
+                res[k]=[_v]
+                first_result.append(res)
+    if DEBUG: print(first_result)
+    last_result=first_result
+    for r in range(len(params_list_of_dicts)-1): #each of the new dictionaries in the list
+        # extend current with r-th component
+        current_plus_rth_parameter=[]
+        for k,v in params_list_of_dicts[1+r].items():
+            for _v in v:
+                for res_ith in range(len(last_result)):
+                    current_plus_rth_parameter_vth_value=last_result[res_ith].copy()
+                    if DEBUG: print('adding ',k,':',_v)
+                    if DEBUG: print('adding to ',current_plus_rth_parameter_vth_value)
+                    current_plus_rth_parameter_vth_value[k]=[_v]
+                    if DEBUG: print('result ',current_plus_rth_parameter_vth_value) # print extended
+                    current_plus_rth_parameter.append(current_plus_rth_parameter_vth_value)
+                    if DEBUG: print(current_plus_rth_parameter)
+        if DEBUG:  print('appending to last result')
+        last_result=current_plus_rth_parameter
+        if DEBUG:  print(last_result)
+
+    return last_result
+
+
+# In[6]:
+
+
+def dictionary_outer(d1,d2):
+    return np.array([ [ [ [ {k1:[v1[i1]], k2:[v2[i2]]} for i2 in range(len(v2)) ] for i1 in range(len(v1)) ]                       for k1,v1 in d1.items() ] for k2,v2 in d2.items() ]).flatten()
 
 
 # # Number manipulations
@@ -858,7 +950,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[554]:
+# In[ ]:
 
 
 def num(s):
@@ -896,7 +988,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[555]:
+# In[ ]:
 
 
 def to_precision(x,p):
