@@ -2,7 +2,7 @@
 # coding: utf-8 
 # # Import
 
-# In[ ]:
+# In[207]:
 
 
 from __future__ import print_function
@@ -24,12 +24,17 @@ from scipy.optimize import curve_fit
 import uncertainties
 import NumpyClasses as npc
 import sympy
+import sympy as sp
 from sympy.utilities.lambdify import lambdify
 import scipy.interpolate
 import matplotlib.pyplot as plt
 import unicodedata
 import matplotlib
 import ray, time
+from bokeh.io import show, output_file, save, export_png, export_svgs
+from bokeh.layouts import column
+from bokeh.models import ColumnDataSource, RangeTool
+from bokeh.plotting import figure
 
 
 # In[ ]:
@@ -379,6 +384,181 @@ def heatmap(data, row_labels, col_labels, ax=None,
     return im, cbar
 
 
+# In[ ]:
+
+
+import numpy as np
+
+import matplotlib.pyplot as plt
+from matplotlib.path import Path
+from matplotlib.spines import Spine
+from matplotlib.projections.polar import PolarAxes
+from matplotlib.projections import register_projection
+
+
+def radar_factory(num_vars, frame='circle'):
+    """Create a radar chart with `num_vars` axes.
+
+    This function creates a RadarAxes projection and registers it.
+
+    Parameters
+    ----------
+    num_vars : int
+        Number of variables for radar chart.
+    frame : {'circle' | 'polygon'}
+        Shape of frame surrounding axes.
+
+    """
+    # calculate evenly-spaced axis angles
+    theta = np.linspace(0, 2*np.pi, num_vars, endpoint=False)
+
+    def draw_poly_patch(self):
+        # rotate theta such that the first axis is at the top
+        verts = unit_poly_verts(theta + np.pi / 2)
+        return plt.Polygon(verts, closed=True, edgecolor='k')
+
+    def draw_circle_patch(self):
+        # unit circle centered on (0.5, 0.5)
+        return plt.Circle((0.5, 0.5), 0.5)
+
+    patch_dict = {'polygon': draw_poly_patch, 'circle': draw_circle_patch}
+    if frame not in patch_dict:
+        raise ValueError('unknown value for `frame`: %s' % frame)
+
+    class RadarAxes(PolarAxes):
+
+        name = 'radar'
+        # use 1 line segment to connect specified points
+        RESOLUTION = 1
+        # define draw_frame method
+        draw_patch = patch_dict[frame]
+
+        def __init__(self, *args, **kwargs):
+            super(RadarAxes, self).__init__(*args, **kwargs)
+            # rotate plot such that the first axis is at the top
+            self.set_theta_zero_location('N')
+
+        def fill(self, *args, **kwargs):
+            """Override fill so that line is closed by default"""
+            closed = kwargs.pop('closed', True)
+            return super(RadarAxes, self).fill(closed=closed, *args, **kwargs)
+
+        def plot(self, *args, **kwargs):
+            """Override plot so that line is closed by default"""
+            lines = super(RadarAxes, self).plot(*args, **kwargs)
+            for line in lines:
+                self._close_line(line)
+
+        def _close_line(self, line):
+            x, y = line.get_data()
+            # FIXME: markers at x[0], y[0] get doubled-up
+            if x[0] != x[-1]:
+                x = np.concatenate((x, [x[0]]))
+                y = np.concatenate((y, [y[0]]))
+                line.set_data(x, y)
+
+        def set_varlabels(self, labels):
+            self.set_thetagrids(np.degrees(theta), labels)
+
+        def _gen_axes_patch(self):
+            return self.draw_patch()
+
+        def _gen_axes_spines(self):
+            if frame == 'circle':
+                return PolarAxes._gen_axes_spines(self)
+            # The following is a hack to get the spines (i.e. the axes frame)
+            # to draw correctly for a polygon frame.
+
+            # spine_type must be 'left', 'right', 'top', 'bottom', or `circle`.
+            spine_type = 'circle'
+            verts = unit_poly_verts(theta + np.pi / 2)
+            # close off polygon by repeating first vertex
+            verts.append(verts[0])
+            path = Path(verts)
+
+            spine = Spine(self, spine_type, path)
+            spine.set_transform(self.transAxes)
+            return {'polar': spine}
+
+    register_projection(RadarAxes)
+    return theta
+
+
+def unit_poly_verts(theta):
+    """Return vertices of polygon for subplot axes.
+
+    This polygon is circumscribed by a unit circle centered at (0.5, 0.5)
+    """
+    x0, y0, r = [0.5] * 3
+    verts = [(r*np.cos(t) + x0, r*np.sin(t) + y0) for t in theta]
+    return verts
+
+def spiderPlot(properties,df):
+    ''' 
+    Plots a polygon plot (radar-plot, spider-plot) of the values in the columns `properties` of the dataframe `df`
+    `df` must contain only one row at this point 
+    '''
+    N = len(properties)
+
+    theta = radar_factory(N, frame='polygon')
+    fig, axes = plt.subplots(figsize=(9, 9), nrows=1, ncols=1,subplot_kw=dict(projection='radar'))
+    fig.subplots_adjust(wspace=0.25, hspace=0.20, top=0.85, bottom=0.05)
+    axes.set_rgrids([1,3, 9,27])
+    color='g'
+    d = df.to_numpy()[0]
+
+    axes.set_varlabels(properties)
+    axes.plot(theta, d, color=color)
+    axes.fill(theta, d, facecolor=color, alpha=0.25)
+
+    plt.show()
+    return df
+
+
+# #  Bokeh
+
+# In[ ]:
+
+
+def makeDateSeriesPlot(data,file_name_root='plot',output_format='png',ylabel='Temperature [C]',xdata='Date',ydata='Temperature'):
+    """
+    A function that makes a plot in a file `file_name_root` with extension `output`  from a sample of data `data`.
+    Data is a Pandas Dataframe and plots `ydata` against a datetime `xdata`. 
+    """
+    p = figure(plot_height=300, plot_width=800, tools="xpan,reset,save,hover", toolbar_location='left',
+               x_axis_type="datetime", x_axis_location="above",
+               background_fill_color="#efefef", x_range=(data['Date'].min(), data['Date'].max()))
+
+    p.line(xdata, ydata, source=data)
+    p.yaxis.axis_label = ylabel
+
+    select = figure(title="Drag the middle and edges of the selection box to change the range above",
+                    plot_height=130, plot_width=800, y_range=p.y_range,
+                    x_axis_type="datetime", y_axis_type=None,
+                    tools="", toolbar_location=None, background_fill_color="#efefef")
+
+    range_tool = RangeTool(x_range=p.x_range)
+    range_tool.overlay.fill_color = "navy"
+    range_tool.overlay.fill_alpha = 0.2
+
+    select.line('Date', 'Temperature', source=data)
+    select.ygrid.grid_line_color = None
+    select.add_tools(range_tool)
+    select.toolbar.active_multi = range_tool
+
+
+    if output_format=='web':
+        show(column(p, select))
+    if output_format=='html':
+        output_file(file_name_root+".html")
+        save(column(p, select))
+    if output_format=='svg':
+        p.output_backend = "svg"
+        export_svgs(column(p, select), filename=file_name_root+".svg")
+    if output_format=='png':
+        export_png(column(p, select), filename=file_name_root+".png")
+
+
 # # Pandas
 
 # In[ ]:
@@ -406,17 +586,22 @@ def fit_histogram_data(_func,bins,n,p0=None,bounds=(-np.inf,np.inf),**kw):
     return popt, pcov
 
 
-# In[173]:
+# In[150]:
 
 
-def fit_pandas_data(_func,_data,x=0,y=1,weights=2,error_format='latex',significant_digits=1,**kw):
-    debug=False
+def fit_pandas_data(_func,_data,x=0,y=1,weights=2,error_format='latex',significant_digits=1,debug=True,**kw):
+    #debug=False
     if type(x)==int and type(y)==int and type(weights)==int:
         _x=_data.iloc[:, x ]
         _y=_data.iloc[:, y ]
         _weights=_data.iloc[:, weights ]
     else:
-        _x=_data[x]
+        if debug:
+            print('domain is ', x)
+        # _x is the variable that I will put in the curve_fit
+        _x=np.array(_data[x]) # if x is a list this will be a matrix
+        if debug:
+            print(_x)
         _y=_data[y]
         try:
             _weights=_data[weights]
@@ -431,7 +616,7 @@ def fit_pandas_data(_func,_data,x=0,y=1,weights=2,error_format='latex',significa
         
     popt, pcov = curve_fit(_func, _x, _y, sigma=_weights, absolute_sigma=True, **kw)
     if debug:
-        print(popt)
+        print('popt=',popt)
     #_const=ufloat(popt[0],np.sqrt(pcov[0,0]))
     #_linear=ufloat(popt[1],np.sqrt(pcov[1,1]))
     #print('{:+.1uS}'.format(_const) , '( {:+.1uS}'.format(60*_linear)," )"+"* t/h" )
@@ -439,10 +624,12 @@ def fit_pandas_data(_func,_data,x=0,y=1,weights=2,error_format='latex',significa
     #lin=ufloat(popt[1],np.sqrt(pcov[1,1]))
     #const=ufloat(popt[0],np.sqrt(pcov[0,0]))
     #
-    
-    c95 = sympy.symbols('c95',real=True,positive=False)
-    best_func_sympy=_func( *([c95]+list(popt)) )
-    best_func_numpy=lambdify([c95],best_func_sympy,"numpy")
+    c95s = sp.symarray('c_95',  _x.shape[-1] )
+    _p = sp.symarray('p',  popt.shape[-1] )
+    #c95 = sympy.symbols('c95',real=True)
+    best_func_sympy_sympy=_func( np.array([c95s]),*_p) 
+    best_func_sympy=_func( np.array([c95s]),*list(popt) )
+    best_func_numpy=lambdify(c95s,best_func_sympy,"numpy")
     
     raw_pars=[     uncertainties.ufloat( popt[p], np.sqrt(pcov[p,p] ) )  for p in range(len(popt) ) ]
     if debug:
@@ -457,7 +644,9 @@ def fit_pandas_data(_func,_data,x=0,y=1,weights=2,error_format='latex',significa
     
     refined_pars=[ p.format(err_format) for p in raw_pars ]
     if debug:
-        print(refined_pars)
+        print("result.refined_parameters=",refined_pars)
+    if debug:
+        print("result.bestfit_sympy=",best_func_sympy)
     result=npc.generic()
     result.parameters = popt
     result.covariance = pcov
@@ -465,6 +654,7 @@ def fit_pandas_data(_func,_data,x=0,y=1,weights=2,error_format='latex',significa
     result.refined_parameters = refined_pars
     result.bestfit=best_func_numpy
     result.bestfit_sympy=best_func_sympy
+    result.bestfit_sympy_sympy=best_func_sympy_sympy
     
     return result #popt, pcov
 
@@ -582,7 +772,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[ ]:
+# In[208]:
 
 
 def read_file_to_lines(file_name):
@@ -593,7 +783,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[ ]:
+# In[209]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -604,7 +794,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[ ]:
+# In[210]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -613,7 +803,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[ ]:
+# In[211]:
 
 
 def filejson2dictionary(fn):
@@ -622,7 +812,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[ ]:
+# In[212]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -689,7 +879,7 @@ def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[ ]:
+# In[213]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -796,21 +986,21 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[ ]:
+# In[214]:
 
 
 def sort_by_ith(data,i):
     return sorted(data, key=lambda tup: tup[i])
 
 
-# In[ ]:
+# In[215]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[ ]:
+# In[216]:
 
 
 def arange(a,b,s):
@@ -827,21 +1017,21 @@ linspace(0,2,0.2)
 
 # # Strings
 
-# In[ ]:
+# In[217]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[ ]:
+# In[218]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[ ]:
+# In[219]:
 
 
 def dashed_to_year(stri):
@@ -879,7 +1069,7 @@ def dashed_to_year(stri):
 
 # # Dictionaries
 
-# In[ ]:
+# In[220]:
 
 
 def dict2string(dictio):
@@ -950,7 +1140,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[ ]:
+# In[221]:
 
 
 def num(s):
@@ -988,7 +1178,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[ ]:
+# In[222]:
 
 
 def to_precision(x,p):
