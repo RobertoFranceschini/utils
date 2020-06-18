@@ -2,10 +2,10 @@
 # coding: utf-8 
 # # Import
 
-# In[207]:
+# In[96]:
 
 
-from __future__ import print_function
+#from __future__ import print_function
 import math
 import re
 import sys
@@ -20,14 +20,14 @@ import pandas as pd
 from pandas.io.json import json_normalize
 import pypdt
 import numpy as np
-from scipy.optimize import curve_fit
+from scipy.optimize import curve_fit, minimize
 import uncertainties
+import matplotlib.pyplot as plt
 import NumpyClasses as npc
 import sympy
 import sympy as sp
 from sympy.utilities.lambdify import lambdify
 import scipy.interpolate
-import matplotlib.pyplot as plt
 import unicodedata
 import matplotlib
 import ray, time
@@ -109,6 +109,15 @@ def wait_for_ray_iterable(analysisResult,method=check_RayObjectsIdDict,DEBUG=Fal
 
 
 # # MatplotLib
+
+# http://fredborg-braedstrup.dk/blog/2014/10/10/saving-mpl-figures-using-pickle/
+
+# ```python
+# fig_handle = plt.figure()
+# plt.plot([1,2,3],[1,2,3])
+# with open('123.pickle', 'wb') as f: 
+#     pickle.dump(fig_handle, f) 
+# ```
 
 # In[134]:
 
@@ -515,6 +524,45 @@ def spiderPlot(properties,df):
     return df
 
 
+# In[ ]:
+
+
+def find_range(chiS,a_scale=(-2e3/5,2e3/5,50)):
+    _mg=np.meshgrid(np.linspace(*a_scale),np.linspace(*a_scale))
+    return np.min(sp.lambdify(chiS.free_symbols,chiS)(*_mg)), np.max(sp.lambdify(chiS.free_symbols,chiS)(*_mg))
+
+
+# In[ ]:
+
+
+def contour_plot(Z,x_seq=(-2e-3,2e-3,50),y_seq=(-2e-3,2e-3,50),label_format='%1.0f',levels=np.arange(0, 100, 10),cmap="YlGn",shades_alpha=1.0,contour_color='k',contour_alpha=1.0,label_color='k',label_alpha=1.0,xlabel='$x$ label',ylabel='ylabel',title='title',fontsize=14):
+    x, y = np.meshgrid(np.linspace(*x_seq), np.linspace(*y_seq))
+    z=Z(x,y)
+    #
+    if type(levels)==int:
+        levels=np.linspace(np.min(z),np.max(z),levels)
+    fig, ax = plt.subplots()
+    im=ax.contourf(x, y, z,levels,cmap=cmap,alpha=shades_alpha)
+    CS=ax.contour(x, y, z, levels, colors=contour_color,alpha=contour_alpha)
+    ax.clabel(CS, levels, inline=1, fmt=label_format,colors=label_color, fontsize=fontsize)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    plt.title(title)
+    plt.xlim
+    fig.colorbar(im, orientation='vertical', shrink=0.99)
+
+
+# In[ ]:
+
+
+def cross(x,y,style='rx',**kwargs):
+    '''
+    kwargs e.g. markersize=7,marker='x',mfc="C1", mec="C2"
+    '''
+    _x, _y = np.meshgrid(np.array([x]), np.array(y))
+    plt.plot(_x,_y,style,**kwargs)
+
+
 # #  Bokeh
 
 # In[ ]:
@@ -609,9 +657,9 @@ def fit_pandas_data(_func,_data,x=0,y=1,weights=2,error_format='latex',significa
             print('Weights for this fit were not found.')
             _weights=None
     if debug:
-        print(_data)
-        print(_x)
-        print(_y)
+        print('_data:',_data)
+        print('_x:',_x)
+        print('_y:',_y)
 
         
     popt, pcov = curve_fit(_func, _x, _y, sigma=_weights, absolute_sigma=True, **kw)
@@ -657,6 +705,82 @@ def fit_pandas_data(_func,_data,x=0,y=1,weights=2,error_format='latex',significa
     result.bestfit_sympy_sympy=best_func_sympy_sympy
     
     return result #popt, pcov
+
+
+# In[265]:
+
+
+def profiled_limits(observable,nCouplings=None,_lumi=0,_nsigma=2,events_numbers_format="{:6.1f}",ratios_number_format='{:.4g}', results_number_format='{:.4g}', tol=1e-3, maxiter=10000,DEBUG=False,marginalized=False,make_bound=True,fluctuation=None):
+    '''
+    
+    - `fluctuation` if it is left `None` is computed from _nsigma and the value at zero, otherwise
+        I assume the fluctuation is a fixed number (float) for which to solve `deviation=fluctuation`
+    
+    Usage:
+    for a vector-able `observable` functions, that is a functions that always returns a list, even if 1D
+    e.g.  f(x)->[Sin(x)]
+    pointers must be used throughout
+    `profiled_limits(lambda *x: fit_res.bestfit(*x)[0] , _lumi=luminosity(eb),_nsigma=2)`
+     
+    '''
+    def inverse_coupling(x):
+        return sp.sign(x)/sp.sqrt(sp.Abs(x))
+
+    if nCouplings is None:
+        # figure out the numner of couplings
+        from inspect import signature
+        sig = signature(observable)
+        nCouplings=len(sig.parameters)
+    if DEBUG: print(nCouplings,' couplings')
+    # Number of events
+    # SMcrosssection=np.array(fit_res.bestfit(*np.zeros(nCouplings)))[0]
+    SMcrosssection=observable(*np.zeros(nCouplings) )
+    SMevents=_lumi*SMcrosssection
+    if DEBUG: print('Expected events in the SM', events_numbers_format.format(SMevents))
+    if fluctuation is None:
+        fluctuation=_nsigma*np.sqrt( _lumi*SMcrosssection)
+    # else I assume the fluctuation is a fixed number (float) for which to solve `deviation=fluctuation`    
+    if DEBUG: print(str(_nsigma)+'sigma fluctuation in the SM', events_numbers_format.format(fluctuation))
+    # Treating the predictions
+    c95i=sp.symarray('c95',nCouplings)# sp.symbols('c95',real=True)
+    deviation= _lumi* np.abs( observable(*c95i) - SMcrosssection )
+    if not make_bound:
+        return deviation, fluctuation
+    else:
+        for _i,_c95 in enumerate(c95i):
+            print('***************'+str(_i)+'*********************')
+            # for each couplings I can do the profiled bound
+            c95 = sp.symbols('c95',real=True)
+            point=list(np.zeros(nCouplings))
+            point[_i]=c95
+            deviation_this_direction = sp_replace(deviation,point)
+            sols = sp.solveset( sp.Eq(deviation_this_direction,fluctuation) ,c95,domain=sp.S.Reals)
+            if DEBUG: print(sols)
+            phys_sols=sorted(sols, key=lambda x: np.abs(x) )[0:2]
+
+            deviation.collect(c95)
+            g95inverseroot=list(map(lambda x: sp.sign(x)/sp.sqrt(sp.Abs(x)), phys_sols ) )
+            print(_c95,'$CW^{-1/2}$'+'@'+str(_nsigma)+r'$\sigma$'+' CL=', [ results_number_format.format(_n) for _n in g95inverseroot ])
+            if DEBUG: print('equivalent $\hat{S}=$',np.mean( list(map(lambda x: 0.08**2*sp.Abs(x) , phys_sols ))) )
+            BSMcontributions=np.array([ _lumi*( observable(*point).subs(c95,cc) - SMcrosssection ) for cc in phys_sols ])
+            if DEBUG: print('Expected events  BSM - SM',  [ events_numbers_format.format(_n) for _n in BSMcontributions]   )
+            if DEBUG: print('BSM/SM', [ ratios_number_format.format(_n) for _n in BSMcontributions/SMevents]  )
+            if marginalized:
+                _dev=sp.lambdify(deviation.free_symbols,deviation)
+                def con(x,func,value):
+                        '''
+                        constraint x**2+y**2=1 (a unit circle) can be passed as a list of arguments 'args':(lambda x,y: x**2+y**2,1,) 
+                        if the function of the constraints is a vectorized function (i.e. always returns a list even if 1D)
+                        `'args':( lambda *x: fit_res.bestfit(*x)[0],18,)` must be passed
+                        '''
+                        return func(*x) - value
+                cons = {'type':'eq', 'fun': con, 'args':( _dev,fluctuation,)}
+                minimization=minimize(lambda x: x[_i], np.zeros(nCouplings), constraints=cons , tol=tol,options={'maxiter':maxiter})
+                cons = {'type':'eq', 'fun': con, 'args':( _dev,fluctuation,)}
+                maximization=minimize(lambda x: -x[_i], np.zeros(nCouplings), constraints=cons , tol=tol,options={'maxiter':maxiter})
+                if (maximization['status'] ==0) and (minimization['status'] ==0):
+                    print('marginalized: [', results_number_format.format( inverse_coupling(minimization['fun'])  ),' ', results_number_format.format(-inverse_coupling(maximization['fun'])), ']')
+            print('************************************')
 
 
 # # Numpy Manipulations
@@ -737,6 +861,26 @@ def versor(_beta):
     return _beta/np.sqrt(np.dot(_beta,_beta))
 
 
+# # Sympy
+
+# In[80]:
+
+
+def list2sympy(mypoint,expression):
+    myPoint={ symbol:mypoint[i] for i,symbol in enumerate(expression.free_symbols)}
+    return myPoint
+
+def sp_replace(expression, point):
+    '''
+    This functions facilitates the usage of a symbolic functions in a
+    quicker format, closer to `f([0,1,2,3])`
+    If one wants to use the names of the variables instead, it is always 
+    possible to use the default sympy 
+    `expression.subs({p0:1,p1:2,p3:3,p4:4})`
+    '''
+    return expression.subs(list2sympy(point,expression))
+
+
 # # Logical
 
 # In[ ]:
@@ -772,7 +916,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[208]:
+# In[97]:
 
 
 def read_file_to_lines(file_name):
@@ -783,7 +927,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[209]:
+# In[98]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -794,7 +938,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[210]:
+# In[99]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -803,7 +947,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[211]:
+# In[100]:
 
 
 def filejson2dictionary(fn):
@@ -812,7 +956,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[212]:
+# In[101]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -879,7 +1023,7 @@ def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[213]:
+# In[102]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -986,90 +1130,80 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[214]:
+# In[103]:
 
 
 def sort_by_ith(data,i):
     return sorted(data, key=lambda tup: tup[i])
 
 
-# In[215]:
+# In[67]:
+
+
+def generate_patterns(pattern='squares',zero=0,small=1e-12,mid=1e-11,large =1e-10,names=['GeR','G3L'],make_plot=False,fine=False):
+    
+    def minus(x):
+        if type(x)==str:
+            return '-'+x
+        else:
+            return -x
+        
+    #diagonals 9 total
+    diagonalPlus=[[minus(large),minus(large)],[minus(small),minus(small)],[zero,zero],[small,small],[large,large]]
+    smallDiagonalMinus=[[minus(small),small],[small,minus(small)]]
+    BigHorizontal=[[zero,large],[zero,minus(large)]]
+    # squares 9 or 13 total
+    SmallSquare=[[small,small],[minus(small),minus(small)],[small,minus(small)],[minus(small),small]]
+    MidSquare=[[mid,mid],[minus(mid),minus(mid)],[mid,minus(mid)],[minus(mid),mid]]
+    BigSquare=[[large,large],[minus(large),minus(large)],[large,minus(large)],[minus(large),large]]
+    ###
+    if pattern=='diagonals':
+        res=diagonalPlus+smallDiagonalMinus+BigHorizontal            
+    if pattern=='squares':
+        res=[[zero,zero]]+SmallSquare+BigSquare
+        if fine:
+            res+=MidSquare
+            
+    ###
+    _L = [ [{names[0]:a},{names[1]:b}] for a,b in res ] 
+    #_L = utils.generate_patterns(zero=0,small=1e-12,mid=1e-11,large=1e-10,names=['x','y'])
+    if make_plot:
+        _d=pd.DataFrame([{  k:v    for _r in r  for k,v in _r.items()  } for r in _L ])
+        plt.plot(names[0],names[1],'.',data=_d)
+    return _L
+
+
+# In[69]:
+
+
+generate_patterns(zero=0,small=1e-11,large='1e-9',pattern='squares')
+
+
+# In[104]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[216]:
+# In[105]:
 
 
 def arange(a,b,s):
     return np.arange(a,b+s,s)
 def linspace(start,stop,step):
-    return np.linspace(start, stop, num=(stop-start)/step, endpoint=True)
+    return np.linspace(start, stop, num=int((stop-start)/step)+1, endpoint=True)
 
 
-# In[134]:
+# In[44]:
 
 
 linspace(0,2,0.2)
 
 
-# # Strings
-
-# In[217]:
-
-
-def remove_multiple_spaces(string):
-    return re.sub(' +',' ',string)
-
-
-# In[218]:
-
-
-def ToString(x):
-    return str(x)
-
-
-# In[219]:
-
-
-def dashed_to_year(stri):
-    #print stri
-    if not stri==None:
-        fields=stri.split('-')
-        fields1=fields[0].split(',')
-        fields2=fields1[0].split('/')
-        fields3=fields2[0].split('.')
-        res=[]
-        if len(fields3) == 2:
-            #print "got a dot"
-            res=[fields3[1]]
-        else:
-            res=fields3
-        #       fields5=fields4[0].split()
-        #       if len(fields5) == 2:
-        #           fields6=reversed(fields5)
-        #       else:
-        #           fields6=fields5
-
-        #print fields[0]
-        #print int(fields[0])
-        try:
-            #print stri
-            #print fields, fields1, fields2, fields3, res
-            return int(res[0])
-        except ValueError:
-            #date_object = datetime.strptime(fields, '%Y')
-            print(stri)
-            return 0
-    else:
-        return -1
-
-
 # # Dictionaries
 
-# In[220]:
+# In[106]:
 
 
 def dict2string(dictio):
@@ -1131,6 +1265,79 @@ def dictionary_outer(d1,d2):
     return np.array([ [ [ [ {k1:[v1[i1]], k2:[v2[i2]]} for i2 in range(len(v2)) ] for i1 in range(len(v1)) ]                       for k1,v1 in d1.items() ] for k2,v2 in d2.items() ]).flatten()
 
 
+# In[ ]:
+
+
+def merge_dicts(*dict_args):
+    """
+    Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts.
+    """
+    result = {}
+    for dictionary in dict_args:
+        result.update(dictionary)
+    return result
+
+
+# # Strings
+
+# In[ ]:
+
+
+def unprotect_string(s):
+    return s.replace("\'",'')
+
+
+# In[107]:
+
+
+def remove_multiple_spaces(string):
+    return re.sub(' +',' ',string)
+
+
+# In[108]:
+
+
+def ToString(x):
+    return str(x)
+
+
+# In[109]:
+
+
+def dashed_to_year(stri):
+    #print stri
+    if not stri==None:
+        fields=stri.split('-')
+        fields1=fields[0].split(',')
+        fields2=fields1[0].split('/')
+        fields3=fields2[0].split('.')
+        res=[]
+        if len(fields3) == 2:
+            #print "got a dot"
+            res=[fields3[1]]
+        else:
+            res=fields3
+        #       fields5=fields4[0].split()
+        #       if len(fields5) == 2:
+        #           fields6=reversed(fields5)
+        #       else:
+        #           fields6=fields5
+
+        #print fields[0]
+        #print int(fields[0])
+        try:
+            #print stri
+            #print fields, fields1, fields2, fields3, res
+            return int(res[0])
+        except ValueError:
+            #date_object = datetime.strptime(fields, '%Y')
+            print(stri)
+            return 0
+    else:
+        return -1
+
+
 # # Number manipulations
 
 # In[ ]:
@@ -1140,7 +1347,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[221]:
+# In[110]:
 
 
 def num(s):
@@ -1178,7 +1385,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[222]:
+# In[111]:
 
 
 def to_precision(x,p):
