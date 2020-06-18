@@ -2,7 +2,7 @@
 # coding: utf-8 
 # # Import
 
-# In[96]:
+# In[282]:
 
 
 #from __future__ import print_function
@@ -532,16 +532,18 @@ def find_range(chiS,a_scale=(-2e3/5,2e3/5,50)):
     return np.min(sp.lambdify(chiS.free_symbols,chiS)(*_mg)), np.max(sp.lambdify(chiS.free_symbols,chiS)(*_mg))
 
 
-# In[ ]:
+# In[239]:
 
 
-def contour_plot(Z,x_seq=(-2e-3,2e-3,50),y_seq=(-2e-3,2e-3,50),label_format='%1.0f',levels=np.arange(0, 100, 10),cmap="YlGn",shades_alpha=1.0,contour_color='k',contour_alpha=1.0,label_color='k',label_alpha=1.0,xlabel='$x$ label',ylabel='ylabel',title='title',fontsize=14):
+def contour_plot(Z,x_seq=(-2e-3,2e-3,50),y_seq=(-2e-3,2e-3,50),label_format='%1.0f',levels=np.arange(0, 100, 10),cmap="YlGn",shades_alpha=1.0,contour_color='k',contour_alpha=1.0,label_color='k',label_alpha=1.0,xlabel='$x$ label',ylabel='ylabel',title='title',fontsize=14,fig=None,ax=None,return_fig=False,colorbar=True):
     x, y = np.meshgrid(np.linspace(*x_seq), np.linspace(*y_seq))
     z=Z(x,y)
     #
     if type(levels)==int:
         levels=np.linspace(np.min(z),np.max(z),levels)
-    fig, ax = plt.subplots()
+    if fig is None:
+        if ax is None:
+            fig, ax = plt.subplots()
     im=ax.contourf(x, y, z,levels,cmap=cmap,alpha=shades_alpha)
     CS=ax.contour(x, y, z, levels, colors=contour_color,alpha=contour_alpha)
     ax.clabel(CS, levels, inline=1, fmt=label_format,colors=label_color, fontsize=fontsize)
@@ -549,7 +551,10 @@ def contour_plot(Z,x_seq=(-2e-3,2e-3,50),y_seq=(-2e-3,2e-3,50),label_format='%1.
     plt.ylabel(ylabel)
     plt.title(title)
     plt.xlim
-    fig.colorbar(im, orientation='vertical', shrink=0.99)
+    if colorbar:
+        fig.colorbar(im, orientation='vertical', shrink=0.99)
+    if return_fig:
+        return fig, ax
 
 
 # In[ ]:
@@ -916,7 +921,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[97]:
+# In[283]:
 
 
 def read_file_to_lines(file_name):
@@ -927,7 +932,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[98]:
+# In[284]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -938,7 +943,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[99]:
+# In[285]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -947,7 +952,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[100]:
+# In[286]:
 
 
 def filejson2dictionary(fn):
@@ -956,7 +961,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[101]:
+# In[287]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -1023,7 +1028,7 @@ def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[102]:
+# In[288]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -1130,7 +1135,7 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[103]:
+# In[289]:
 
 
 def sort_by_ith(data,i):
@@ -1179,14 +1184,14 @@ def generate_patterns(pattern='squares',zero=0,small=1e-12,mid=1e-11,large =1e-1
 generate_patterns(zero=0,small=1e-11,large='1e-9',pattern='squares')
 
 
-# In[104]:
+# In[290]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[105]:
+# In[291]:
 
 
 def arange(a,b,s):
@@ -1203,7 +1208,7 @@ linspace(0,2,0.2)
 
 # # Dictionaries
 
-# In[106]:
+# In[292]:
 
 
 def dict2string(dictio):
@@ -1288,21 +1293,21 @@ def unprotect_string(s):
     return s.replace("\'",'')
 
 
-# In[107]:
+# In[293]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[108]:
+# In[294]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[109]:
+# In[295]:
 
 
 def dashed_to_year(stri):
@@ -1347,7 +1352,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[110]:
+# In[296]:
 
 
 def num(s):
@@ -1385,7 +1390,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[111]:
+# In[297]:
 
 
 def to_precision(x,p):
