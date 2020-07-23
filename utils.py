@@ -2,7 +2,7 @@
 # coding: utf-8 
 # # Import
 
-# In[282]:
+# In[904]:
 
 
 #from __future__ import print_function
@@ -13,6 +13,8 @@ import os
 import json
 import subprocess
 import inspect
+from termcolor import colored
+from inspect import signature
 from subprocess import check_call
 from difflib import SequenceMatcher
 import scipy.sparse
@@ -24,13 +26,16 @@ from scipy.optimize import curve_fit, minimize
 import uncertainties
 import matplotlib.pyplot as plt
 import NumpyClasses as npc
+#
 import sympy
 import sympy as sp
 from sympy.utilities.lambdify import lambdify
+#
 import scipy.interpolate
 import unicodedata
 import matplotlib
 import ray, time
+#
 from bokeh.io import show, output_file, save, export_png, export_svgs
 from bokeh.layouts import column
 from bokeh.models import ColumnDataSource, RangeTool
@@ -535,7 +540,7 @@ def find_range(chiS,a_scale=(-2e3/5,2e3/5,50)):
 # In[239]:
 
 
-def contour_plot(Z,x_seq=(-2e-3,2e-3,50),y_seq=(-2e-3,2e-3,50),label_format='%1.0f',levels=np.arange(0, 100, 10),cmap="YlGn",shades_alpha=1.0,contour_color='k',contour_alpha=1.0,label_color='k',label_alpha=1.0,xlabel='$x$ label',ylabel='ylabel',title='title',fontsize=14,fig=None,ax=None,return_fig=False,colorbar=True):
+def contour_plot(Z,x_seq=(-2e-3,2e-3,50),y_seq=(-2e-3,2e-3,50),label_format='%1.0f',levels=np.arange(0, 100, 10),cmap="YlGn",shades_alpha=1.0,contour_color='k',contour_alpha=1.0,labels=True,label_color='k',label_alpha=1.0,xlabel='$x$ label',ylabel='ylabel',title='title',fontsize=14,fig=None,ax=None,return_fig=False,colorbar=True):
     x, y = np.meshgrid(np.linspace(*x_seq), np.linspace(*y_seq))
     z=Z(x,y)
     #
@@ -546,7 +551,8 @@ def contour_plot(Z,x_seq=(-2e-3,2e-3,50),y_seq=(-2e-3,2e-3,50),label_format='%1.
             fig, ax = plt.subplots()
     im=ax.contourf(x, y, z,levels,cmap=cmap,alpha=shades_alpha)
     CS=ax.contour(x, y, z, levels, colors=contour_color,alpha=contour_alpha)
-    ax.clabel(CS, levels, inline=1, fmt=label_format,colors=label_color, fontsize=fontsize)
+    if labels:
+        ax.clabel(CS, levels, inline=1, fmt=label_format,colors=label_color, fontsize=fontsize)
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
@@ -580,7 +586,7 @@ def makeDateSeriesPlot(data,file_name_root='plot',output_format='png',ylabel='Te
     """
     p = figure(plot_height=300, plot_width=800, tools="xpan,reset,save,hover", toolbar_location='left',
                x_axis_type="datetime", x_axis_location="above",
-               background_fill_color="#efefef", x_range=(data['Date'].min(), data['Date'].max()))
+               background_fill_color="#efefef", x_range=(data[xdata].min(), data[xdata].max()))
 
     p.line(xdata, ydata, source=data)
     p.yaxis.axis_label = ylabel
@@ -594,7 +600,7 @@ def makeDateSeriesPlot(data,file_name_root='plot',output_format='png',ylabel='Te
     range_tool.overlay.fill_color = "navy"
     range_tool.overlay.fill_alpha = 0.2
 
-    select.line('Date', 'Temperature', source=data)
+    select.line(xdata, ydata, source=data)
     select.ygrid.grid_line_color = None
     select.add_tools(range_tool)
     select.toolbar.active_multi = range_tool
@@ -639,10 +645,36 @@ def fit_histogram_data(_func,bins,n,p0=None,bounds=(-np.inf,np.inf),**kw):
     return popt, pcov
 
 
-# In[150]:
+# In[169]:
 
 
 def fit_pandas_data(_func,_data,x=0,y=1,weights=2,error_format='latex',significant_digits=1,debug=True,**kw):
+    '''
+    This functions fits data in `R^n` with a real function `_func` with target space `R`
+    
+    _func may be a vectorized function, which takes a matrix MxN of inputs and treat each of the M row as apoint in R^N
+    
+    The output is given a generic python object `result` which, by `duck typing`,  has properties
+    
+    `result.x` The fitted x data in R^n
+    `result.y` The value of the data in R
+    `result.parameters` The best fit parameters
+    `result.covariance` The covariance matrix
+    `result.raw_parameters` The parameters with errors as `ufloat`
+    `result.refined_parameters` The paramters formatted within significant digits
+    ## sympy outputs
+    `result.bestfit_sympy` The best fit function as sympy *expression*
+    `result.bestfit_sympy_sympy` The fitted functional form as sympy *expression*
+    ## nympy outputs
+    `result.bestfit`    The best fit function as numpy *function* (obtained via lambdify).
+                        This function takes N positional arguments (printed if `debug` is asked).
+                        These arguments are taken from an np.array, thus are *guranteed* to be *ordered* _0 _1 ...
+    `result.bestfit_Rn` The best fit function as numpy *function* (obtained straigh from _func).
+                        This function takes 1  argument that is a vector in R^N (printed if `debug` is asked)
+    `result.residuals` The *absolute* residuals between the fitted function and the data `y`
+    `result.relative_residuals` The *relative* residuals between the fitted function and the data `y`
+    
+    '''
     #debug=False
     if type(x)==int and type(y)==int and type(weights)==int:
         _x=_data.iloc[:, x ]
@@ -677,12 +709,46 @@ def fit_pandas_data(_func,_data,x=0,y=1,weights=2,error_format='latex',significa
     #lin=ufloat(popt[1],np.sqrt(pcov[1,1]))
     #const=ufloat(popt[0],np.sqrt(pcov[0,0]))
     #
-    c95s = sp.symarray('c_95',  _x.shape[-1] )
+    # MAKING SYMPY OUTPUTS
+    c95s = sp.symarray('c_95',  _x.shape[-1] ) #these are guranteed to be ordered _0 _1 ...
+    # if debug:
+    print('c_95s', colored(c95s,'blue') , ' type ', type(c95s))
+    print('list(c_95s)', colored(list(c95s),'blue') , ' type ', type(c95s))
+    print('np.array([c_95s])', colored( np.array([c95s]), 'blue'), 'for  best_func_numpy=lambdify(c95s,best_func_sympy,"numpy") ' ) 
     _p = sp.symarray('p',  popt.shape[-1] )
     #c95 = sympy.symbols('c95',real=True)
-    best_func_sympy_sympy=_func( np.array([c95s]),*_p) 
-    best_func_sympy=_func( np.array([c95s]),*list(popt) )
-    best_func_numpy=lambdify(c95s,best_func_sympy,"numpy")
+    best_func_sympy_sympy=_func( np.array([c95s]),*_p )   # needs to feed an array because _func is vectorized
+    best_func_sympy=_func( np.array([c95s]),*list(popt) ) # needs to feed an array because _func is vectorized
+    
+
+    
+    # MAKING NUMPY OUTPUTS
+    def best_func_numpy_from_func(x_in_Rn): # in this way it is vectorized
+        return _func( x_in_Rn  ,*list(popt) )
+    
+    ## ****** NUMPY VIA LAMBDIFY ***** 
+    best_func_numpy=lambdify(c95s,best_func_sympy,"numpy") # c95s are a np.array thus guranteed to be *ordered* _0 _1 ...
+    sig = signature( best_func_numpy )
+    print( 'signature of best_func_numpy ', colored(str(sig),'yellow') )
+    
+    #if debug:
+    # **** TEST **** THE TWO FUNCTIONS ARGUMENTS ARE ORDERED IN THE SAME WAY
+    x_test = np.random.rand(_x.shape[-1])
+    
+    best_func_numpy_value = best_func_numpy(*x_test) 
+    if debug: print('best_func_numpy' ,best_func_numpy_value  ) # the lambdified function take a tuple of positional arguments, cannot feed the vector itself
+    best_func_sympy_value = best_func_sympy[0].subs({'c_95_'+str(_i):_x_test_i  for _i,_x_test_i in enumerate(x_test)   })
+    if debug:  print('best_func_sympy' , best_func_sympy_value )  
+    best_func_numpyRn_value = best_func_numpy_from_func(np.array([x_test]))
+    if debug: print('best_func_numpyRn_value' , best_func_numpyRn_value )
+    
+    if (np.abs(best_func_numpy_value[0]/best_func_sympy_value -1) < 1e-5) and (np.abs(best_func_numpy_value[0]/best_func_numpyRn_value[0] -1) < 1e-5):
+        if debug: print(colored('SYMPY AND NUMPY VALUES AGREE at 1e-5','green'))
+    else:
+        print(best_func_numpy_value[0],'!=',best_func_sympy_value)
+        print(best_func_numpy_value[0],'!=',best_func_numpyRn_value[0])
+    
+    
     
     raw_pars=[     uncertainties.ufloat( popt[p], np.sqrt(pcov[p,p] ) )  for p in range(len(popt) ) ]
     if debug:
@@ -701,22 +767,61 @@ def fit_pandas_data(_func,_data,x=0,y=1,weights=2,error_format='latex',significa
     if debug:
         print("result.bestfit_sympy=",best_func_sympy)
     result=npc.generic()
+    result.x=_x
+    result.y=_y
     result.parameters = popt
     result.covariance = pcov
     result.raw_parameters = raw_pars
     result.refined_parameters = refined_pars
+    ## numpy outputs
     result.bestfit=best_func_numpy
+    result.bestfit_Rn=best_func_numpy_from_func
+    ## sympy outputs
     result.bestfit_sympy=best_func_sympy
     result.bestfit_sympy_sympy=best_func_sympy_sympy
-    
+    #
+    result.residuals=np.array(list(map(lambda x: result.bestfit(*x), result.x )))-np.array([result.y]).T
+    result.relative_residuals=(np.array(list(map(lambda x: result.bestfit(*x), result.x )))/np.array([result.y]).T)-1
     return result #popt, pcov
 
 
-# In[265]:
+# In[ ]:
 
 
-def profiled_limits(observable,nCouplings=None,_lumi=0,_nsigma=2,events_numbers_format="{:6.1f}",ratios_number_format='{:.4g}', results_number_format='{:.4g}', tol=1e-3, maxiter=10000,DEBUG=False,marginalized=False,make_bound=True,fluctuation=None):
+def test_fit_function_arguments_are_consistent(fit_res,x_test=None,debug=False):
+    if x_test is None:
+        from inspect import signature
+        sig = signature( fit_res.bestfit )
+        #print()
+        x_test = np.random.rand(len(sig.parameters))
+
+
+
+    if debug: print(x_test)
+    best_func_numpy_value = fit_res.bestfit(*x_test) 
+    if debug: print('best_func_numpy' ,best_func_numpy_value  ) # the lambdified function take a tuple of positional arguments, cannot feed the vector itself
+    best_func_sympy_value = fit_res.bestfit_sympy[0].subs({'c_95_'+str(_i):_x_test_i  for _i,_x_test_i in enumerate(x_test)   })
+    if debug: print('best_func_sympy' , best_func_sympy_value )  
+    best_func_numpyRn_value = fit_res.bestfit_Rn(np.array([x_test]))
+    if debug: print('best_func_numpyRn_value' , best_func_numpyRn_value )
+
+
+    if (np.abs(best_func_numpy_value[0]/best_func_sympy_value -1) < 1e-5) and (np.abs(best_func_numpy_value[0]/best_func_numpyRn_value[0] -1) < 1e-5):
+        if debug: print(colored('SYMPY AND NUMPY VALUES AGREE at 1e-5','green'))
+        return True
+    else:
+        print(best_func_numpy_value[0],'!=',best_func_sympy_value)
+        print(best_func_numpy_value[0],'!=',best_func_numpyRn_value[0])
+        return False
+
+
+# In[26]:
+
+
+def profiled_limits(observable,nCouplings=None,_lumi=0,_nsigma=2,events_numbers_format="{:6.1f}",ratios_number_format='{:.4g}', results_number_format='{:.4g}', tol=1e-7, maxiter=10000,DEBUG=False,marginalized=False,make_bound=True,fluctuation=None):
     '''
+    - `observable` is callable, e.g. a numpy function. It must take N positional arguments in the ordering of `utils.sort_symbols`. \
+       - It is `not a sympy` object. If a sympy expression is turned into numpy by lambdidy u.sort_symbols must be used to feed arguments to lambdidy.
     
     - `fluctuation` if it is left `None` is computed from _nsigma and the value at zero, otherwise
         I assume the fluctuation is a fixed number (float) for which to solve `deviation=fluctuation`
@@ -728,6 +833,7 @@ def profiled_limits(observable,nCouplings=None,_lumi=0,_nsigma=2,events_numbers_
     `profiled_limits(lambda *x: fit_res.bestfit(*x)[0] , _lumi=luminosity(eb),_nsigma=2)`
      
     '''
+    _result=[]
     def inverse_coupling(x):
         return sp.sign(x)/sp.sqrt(sp.Abs(x))
 
@@ -739,39 +845,58 @@ def profiled_limits(observable,nCouplings=None,_lumi=0,_nsigma=2,events_numbers_
     if DEBUG: print(nCouplings,' couplings')
     # Number of events
     # SMcrosssection=np.array(fit_res.bestfit(*np.zeros(nCouplings)))[0]
-    SMcrosssection=observable(*np.zeros(nCouplings) )
+    SMcrosssection=observable(*np.zeros(nCouplings) ) #all variavbles are zero, the ordering of the positional paramters is irrelevant
     SMevents=_lumi*SMcrosssection
     if DEBUG: print('Expected events in the SM', events_numbers_format.format(SMevents))
     if fluctuation is None:
         fluctuation=_nsigma*np.sqrt( _lumi*SMcrosssection)
     # else I assume the fluctuation is a fixed number (float) for which to solve `deviation=fluctuation`    
     if DEBUG: print(str(_nsigma)+'sigma fluctuation in the SM', events_numbers_format.format(fluctuation))
+
     # Treating the predictions
-    c95i=sp.symarray('c95',nCouplings)# sp.symbols('c95',real=True)
-    deviation= _lumi* np.abs( observable(*c95i) - SMcrosssection )
+    c95i=sp.symarray('c_95',nCouplings) # these are an np.array, thus gurantedd to be ordered _0 _1 ... 
+
+    
+    ### THE ORDER OF THE OBSERVABLE arguments list MUST BE THE SAME AS FOR THE SYMBOLS free-symbols set
+    
+    print_signature(observable)
+    deviation = _lumi* np.abs( observable(*c95i) - SMcrosssection )  
+    # this assumes that the observable takes N positional arguments ordered
+    # the sympy expression `deviation` might have free_symbols ordered in a different way.
+    print('deviation.free_symbols',colored(deviation.free_symbols,'magenta'),colored('it may differ from the rest of lists that are signatures','magenta'))
+    print('sort_symbols(deviation)',colored( sort_symbols(deviation),'yellow'))
     if not make_bound:
         return deviation, fluctuation
     else:
-        for _i,_c95 in enumerate(c95i):
+        for _i,_c95 in enumerate(c95i): 
             print('***************'+str(_i)+'*********************')
             # for each couplings I can do the profiled bound
             c95 = sp.symbols('c95',real=True)
+            if DEBUG: print(c95i,_c95)
             point=list(np.zeros(nCouplings))
             point[_i]=c95
-            deviation_this_direction = sp_replace(deviation,point)
+            if DEBUG: print(point)
+            #
+            deviation_this_direction = sp_replace(deviation,point,debug=DEBUG) # sp_replace uses sort_symbols, this it is guaranteed to call 0 the direction of c_95_0 and so on.
+            if DEBUG: print('deviation',deviation)
+            if DEBUG: print('deviation_this_direction',deviation_this_direction)
             sols = sp.solveset( sp.Eq(deviation_this_direction,fluctuation) ,c95,domain=sp.S.Reals)
             if DEBUG: print(sols)
             phys_sols=sorted(sols, key=lambda x: np.abs(x) )[0:2]
-
+            print( 'couplings allowed range', colored(  [ float(results_number_format.format(_n)) for _n in sorted(phys_sols) ]  ,'cyan') )
             deviation.collect(c95)
             g95inverseroot=list(map(lambda x: sp.sign(x)/sp.sqrt(sp.Abs(x)), phys_sols ) )
-            print(_c95,'$CW^{-1/2}$'+'@'+str(_nsigma)+r'$\sigma$'+' CL=', [ results_number_format.format(_n) for _n in g95inverseroot ])
+            _result+=[g95inverseroot]
+            if DEBUG: print(_c95,'$CW^{-1/2}$'+'@'+str(_nsigma)+r'$\sigma$'+' CL=', colored( [ results_number_format.format(_n) for _n in g95inverseroot ], 'blue') )
+            print(_c95,'$CW^{-1/2}$'+'@'+str(_nsigma)+r'$\sigma$'+' CL=', colored( [ float(results_number_format.format(_n)) for _n in sorted(g95inverseroot) ], 'blue') )
             if DEBUG: print('equivalent $\hat{S}=$',np.mean( list(map(lambda x: 0.08**2*sp.Abs(x) , phys_sols ))) )
             BSMcontributions=np.array([ _lumi*( observable(*point).subs(c95,cc) - SMcrosssection ) for cc in phys_sols ])
             if DEBUG: print('Expected events  BSM - SM',  [ events_numbers_format.format(_n) for _n in BSMcontributions]   )
-            if DEBUG: print('BSM/SM', [ ratios_number_format.format(_n) for _n in BSMcontributions/SMevents]  )
+            if DEBUG: 
+                if SMevents>0:
+                    print('BSM/SM', [ ratios_number_format.format(_n) for _n in BSMcontributions/SMevents]  )
             if marginalized:
-                _dev=sp.lambdify(deviation.free_symbols,deviation)
+                _dev=sp.lambdify( sort_symbols(deviation) ,deviation)
                 def con(x,func,value):
                         '''
                         constraint x**2+y**2=1 (a unit circle) can be passed as a list of arguments 'args':(lambda x,y: x**2+y**2,1,) 
@@ -785,7 +910,13 @@ def profiled_limits(observable,nCouplings=None,_lumi=0,_nsigma=2,events_numbers_
                 maximization=minimize(lambda x: -x[_i], np.zeros(nCouplings), constraints=cons , tol=tol,options={'maxiter':maxiter})
                 if (maximization['status'] ==0) and (minimization['status'] ==0):
                     print('marginalized: [', results_number_format.format( inverse_coupling(minimization['fun'])  ),' ', results_number_format.format(-inverse_coupling(maximization['fun'])), ']')
+                    print('marginalized couplings: [', results_number_format.format( (minimization['fun'])  ),' ', results_number_format.format( -(maximization['fun'])), ']')
+                else:
+                    print( colored('extremization error','red') )
+                    print( colored(minimization['status'],'red') )
+                    print( colored(maximization['status'],'red') )
             print('************************************')
+    return _result
 
 
 # # Numpy Manipulations
@@ -871,11 +1002,18 @@ def versor(_beta):
 # In[80]:
 
 
-def list2sympy(mypoint,expression):
-    myPoint={ symbol:mypoint[i] for i,symbol in enumerate(expression.free_symbols)}
+def sort_symbols(_chiSquare):
+    return sorted(list( _chiSquare.free_symbols ),key=lambda s: s.name)
+
+def ordered_point2sp_sub(mypoint,expression,debug=False):
+    sorted_symbols = sort_symbols( expression )
+    if debug:
+        print('sorted_symbols ', colored(sorted_symbols, 'yellow'))
+    
+    myPoint={ symbol:mypoint[i] for i,symbol in enumerate( sorted_symbols )}
     return myPoint
 
-def sp_replace(expression, point):
+def sp_replace(expression, point,debug=False):
     '''
     This functions facilitates the usage of a symbolic functions in a
     quicker format, closer to `f([0,1,2,3])`
@@ -883,7 +1021,7 @@ def sp_replace(expression, point):
     possible to use the default sympy 
     `expression.subs({p0:1,p1:2,p3:3,p4:4})`
     '''
-    return expression.subs(list2sympy(point,expression))
+    return expression.subs( ordered_point2sp_sub(point,expression,debug=debug) )
 
 
 # # Logical
@@ -921,7 +1059,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[283]:
+# In[905]:
 
 
 def read_file_to_lines(file_name):
@@ -932,7 +1070,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[284]:
+# In[906]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -943,7 +1081,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[285]:
+# In[907]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -952,7 +1090,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[286]:
+# In[908]:
 
 
 def filejson2dictionary(fn):
@@ -961,7 +1099,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[287]:
+# In[909]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -1023,12 +1161,41 @@ def nextto(s,string='ebeam1'):
         return s.split(string)[1].split('_')[1]
     except IndexError:
         return s
+
+# def float_next_to(x,k):
+#     try:
+#         res=float(u.nextto(x,string=k))
+#     except ValueError as e:
+#         print('working on',k,'-->',e)
+#         res=missing
+#     return res 
     
+
+def float_next_to(x,k,permissive=False,permissive_faulty_value=np.nan):
+    try:
+        res=float(utils.nextto(x,string=k))
+    except ValueError as e:
+        print('working on',k,'-->',e)
+        if not permissive:
+            res=missing
+        else:
+            try:
+                res=missing
+            except NameError:
+                res=permissive_faulty_value
+    return res 
+
+def filename_to_parameters(parameters,df,col):                      
+    for k in parameters:
+        df[str(k)]=df[col].apply(lambda x:  float_next_to(x,k)  ) 
+
+
+
 def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[288]:
+# In[910]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -1135,7 +1302,7 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[289]:
+# In[911]:
 
 
 def sort_by_ith(data,i):
@@ -1184,14 +1351,14 @@ def generate_patterns(pattern='squares',zero=0,small=1e-12,mid=1e-11,large =1e-1
 generate_patterns(zero=0,small=1e-11,large='1e-9',pattern='squares')
 
 
-# In[290]:
+# In[912]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[291]:
+# In[913]:
 
 
 def arange(a,b,s):
@@ -1208,7 +1375,7 @@ linspace(0,2,0.2)
 
 # # Dictionaries
 
-# In[292]:
+# In[914]:
 
 
 def dict2string(dictio):
@@ -1293,21 +1460,21 @@ def unprotect_string(s):
     return s.replace("\'",'')
 
 
-# In[293]:
+# In[915]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[294]:
+# In[916]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[295]:
+# In[917]:
 
 
 def dashed_to_year(stri):
@@ -1343,6 +1510,17 @@ def dashed_to_year(stri):
         return -1
 
 
+# #  Functions
+
+# In[ ]:
+
+
+def print_signature(chiSquare_lambdify):
+    sig = signature( chiSquare_lambdify )
+    print('signature ', colored(str(sig),'yellow'))
+    return sig
+
+
 # # Number manipulations
 
 # In[ ]:
@@ -1352,7 +1530,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[296]:
+# In[918]:
 
 
 def num(s):
@@ -1390,7 +1568,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[297]:
+# In[919]:
 
 
 def to_precision(x,p):
@@ -1459,4 +1637,43 @@ def to_precision(x,p):
         _res=_res[0]
    
     return _res
+
+
+# # LHE
+
+# ```python
+# import lhef, math
+# LHEfile=lhef.readLHE("unweighted_events.lhe")
+# nprinted=0
+# debug=False
+# nPrint=11
+# costheta_values=[] # create a vector where to store the computed values of costheta
+# abs_costheta_values=[] # and one for the abs
+# theta_values=[] # and one for the abs
+# 
+# for e in LHEfile: # loop on the events
+#     for p in e.particles: # loop on the particles of each event
+#         if p.status == 1 and p.id == 24: # check it is a final state and is a Chi+
+#             lv=p.fourvector() # make four vector
+#             obs=lv.cosTheta() # obtain the cosTheta
+#             costheta_values.append(obs) # append it to the vector of results
+#             abs_costheta_values.append(math.fabs(obs)) # and the abs(cosTheta)
+#             theta=lv.theta() # obtain the theta angle
+#             theta_values.append(theta)
+#             if nprinted <nPrint: 
+#                 if debug: print(p.px, p.py, p.pz, p.e)
+#                 if debug: print(obs)
+#                 nprinted+=1
+# 
+# plt.hist(costheta_values,bins=np.linspace(-1,1,num=50),density=True)
+# plt.title(r"$W^+$ $\cos\theta$ Distribution")
+# plt.xlabel(r"$\cos\theta^\star$")
+# plt.ylabel(r"$d\sigma/d\cos\theta$")
+# plt.show()
+# ```
+
+# In[ ]:
+
+
+
 
