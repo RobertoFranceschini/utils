@@ -2,7 +2,7 @@
 # coding: utf-8 
 # # Import
 
-# In[904]:
+# In[922]:
 
 
 #from __future__ import print_function
@@ -1059,7 +1059,7 @@ def bt(a,b):
 
 # # File I/O
 
-# In[905]:
+# In[923]:
 
 
 def read_file_to_lines(file_name):
@@ -1070,7 +1070,7 @@ def read_file_to_lines(file_name):
     return _xml_groups
 
 
-# In[906]:
+# In[924]:
 
 
 def write_lines_to_file(mylines,filename,mode='a',final_line=False):
@@ -1081,7 +1081,7 @@ def write_lines_to_file(mylines,filename,mode='a',final_line=False):
         thefile.write("\n")      
 
 
-# In[907]:
+# In[925]:
 
 
 def write_lines_to_file_newline(mylines,filename,mode='a'):
@@ -1090,7 +1090,7 @@ def write_lines_to_file_newline(mylines,filename,mode='a'):
           thefile.write("\n%s" % item)
 
 
-# In[908]:
+# In[926]:
 
 
 def filejson2dictionary(fn):
@@ -1099,7 +1099,7 @@ def filejson2dictionary(fn):
     return d
 
 
-# In[909]:
+# In[927]:
 
 
 def change_tag_in_file(filename=None,tag=None,text=None):
@@ -1173,7 +1173,7 @@ def nextto(s,string='ebeam1'):
 
 def float_next_to(x,k,permissive=False,permissive_faulty_value=np.nan):
     try:
-        res=float(utils.nextto(x,string=k))
+        res=float(nextto(x,string=k))
     except ValueError as e:
         print('working on',k,'-->',e)
         if not permissive:
@@ -1195,7 +1195,7 @@ def measurementFromString(s,err='±'):
     return list(map(lambda x: float(x), s.split(err) ) )
 
 
-# In[910]:
+# In[928]:
 
 
 def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=False):
@@ -1302,7 +1302,7 @@ def get_best_match(query, corpus, step=4, flex=3, case_sensitive=False, verbose=
 
 # # Lists
 
-# In[911]:
+# In[929]:
 
 
 def sort_by_ith(data,i):
@@ -1351,14 +1351,14 @@ def generate_patterns(pattern='squares',zero=0,small=1e-12,mid=1e-11,large =1e-1
 generate_patterns(zero=0,small=1e-11,large='1e-9',pattern='squares')
 
 
-# In[912]:
+# In[930]:
 
 
 def flattenOnce(tags_times):
     return [y for x in tags_times for y in x]
 
 
-# In[913]:
+# In[931]:
 
 
 def arange(a,b,s):
@@ -1375,7 +1375,7 @@ linspace(0,2,0.2)
 
 # # Dictionaries
 
-# In[914]:
+# In[932]:
 
 
 def dict2string(dictio):
@@ -1460,21 +1460,21 @@ def unprotect_string(s):
     return s.replace("\'",'')
 
 
-# In[915]:
+# In[933]:
 
 
 def remove_multiple_spaces(string):
     return re.sub(' +',' ',string)
 
 
-# In[916]:
+# In[934]:
 
 
 def ToString(x):
     return str(x)
 
 
-# In[917]:
+# In[935]:
 
 
 def dashed_to_year(stri):
@@ -1530,7 +1530,7 @@ def logticks(basis=[1,2,5],orders=[-1.,-2.,-3.,-4.]):
     return np.array(list(map(lambda x: np.array(basis)*np.power(10,x),np.array(orders) ))).flatten()
 
 
-# In[918]:
+# In[936]:
 
 
 def num(s):
@@ -1568,7 +1568,7 @@ def sci_notation(num, decimal_digits=1, precision=None, exponent=None):
     return r"${0:.{2}f}\cdot10^{{{1:d}}}$".format(coeff, exponent, precision)
 
 
-# In[919]:
+# In[937]:
 
 
 def to_precision(x,p):
